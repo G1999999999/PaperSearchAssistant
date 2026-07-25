@@ -85,7 +85,7 @@ def _search_duckduckgo_multi(
             f" 详情：{' | '.join(errors[:3])}"
         )
     return [], (
-        "DuckDuckGo 未返回条目。可尝试配置 SearXNG 或 Brave Search API，见 RUN.md。"
+        "DuckDuckGo 未返回条目。可尝试配置 SearXNG 或 Brave Search API（见环境变量说明）。"
     )
 
 
@@ -430,7 +430,7 @@ def search_web_snippets(
     return [], (
         "未配置可用联网渠道。可：① MCP Streamable（MCP_STREAMABLE_URL + MCP_ENABLED 含 mcpmarket）；"
         "② MCP search（BRAVE_API_KEY + MCP_ENABLED 含 search）；"
-        "③ DuckDuckGo；④ RAG_WEB_SEARXNG_URL；⑤ RAG_WEB_BRAVE_API_KEY。详见 RUN.md。"
+        "③ DuckDuckGo；④ RAG_WEB_SEARXNG_URL；⑤ RAG_WEB_BRAVE_API_KEY。详见 .env.*.example。"
     )
 
 

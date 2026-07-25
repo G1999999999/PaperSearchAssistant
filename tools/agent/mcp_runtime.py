@@ -73,7 +73,7 @@ def default_server_configs() -> list[McpServerConfig]:
     enabled = set(_env_list("MCP_ENABLED", "filesystem,browser"))
     cfgs: list[McpServerConfig] = []
 
-    # Brave Search MCP：网页/新闻检索（需 API Key；见 README_MCP.md）
+    # Brave Search MCP：网页/新闻检索（需 API Key）
     if "search" in enabled:
         cmd = os.getenv("MCP_SEARCH_CMD", "npx")
         args = _env_list("MCP_SEARCH_ARGS", "")

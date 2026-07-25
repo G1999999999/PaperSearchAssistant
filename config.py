@@ -357,7 +357,7 @@ else:
     RAG_WEB_BACKEND = "auto"  # auto / mcp_first / optimal / 未知值
 
 # ---------- RAG 联网：Streamable HTTP MCP（mcpmarket / Bright Data 等）----------
-# 详见 tools/agent/mcp_runtime.py（streamable_http）、README_MCP.md
+# 详见 tools/agent/mcp_runtime.py（streamable_http）
 # RAG 联网：是否在 auto 模式下优先走 Streamable HTTP，再 Brave stdio
 _raw_sf = os.getenv("RAG_WEB_STREAMABLE_FIRST", "1").strip().lower()
 RAG_WEB_STREAMABLE_FIRST = _raw_sf not in (
