@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>论文检索助手</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <style>
+    :root {
+      --bg: #212121;
+      --bg-elevated: #2f2f2f;
+      --bg-sidebar: #171717;
+      --border: rgba(255,255,255,.08);
+      --text: #ececec;
+      --text-dim: #b4b4b4;
+      --accent: #10a37f;
+      --accent-dim: #0d8f6e;
+      --danger: #ef4444;
+      --user-bubble: #2f2f2f;
+      --assistant-bubble: #2f2f2f;
+      --radius: 12px;
+      --font: "Söhne", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { min-height: 100%; }
+    body {
+      min-height: 100%;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .bubble-loading {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      color: var(--text-dim);
+      font-size: 14px;
+      line-height: 1.45;
+      min-height: 44px;
+      padding: 4px 0;
+    }
+    .bubble-loading .spinner {
+      width: 22px;
+      height: 22px;
+      margin-top: 2px;
+    }
+    .bubble-loading-hint {
+      display: block;
+      font-size: 12px;
+      opacity: 0.85;
+      margin-top: 6px;
+      color: var(--text-dim);
+    }
+    .global-loading {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-right: 8px;
+    }
+    .global-loading.on { display: flex; }
+
+    /* ----- Sidebar ----- */
+    .sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    .sidebar-head {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .btn-new {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-new:hover { background: var(--bg-elevated); }
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .session-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+      word-break: break-all;
+    }
+    .session-item:hover { background: rgba(255,255,255,.06); color: var(--text); }
+    .session-item.active { background: rgba(16,163,127,.15); color: var(--text); }
+    .sidebar-foot {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .sidebar-foot label { display: block; margin-bottom: 4px; }
+    .sidebar-foot input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+    }
+    .sidebar-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .btn-ghost {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .btn-ghost:hover { color: var(--text); background: rgba(255,255,255,.05); }
+
+    /* ----- Main ----- */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .topbar {
+      height: 48px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+    .topbar h1 { font-size: 15px; font-weight: 600; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; justify-content: flex-end; }
+    .stream-opt-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      max-width: min(280px, 42vw);
+    }
+    .stream-hint {
+      font-size: 10px;
+      line-height: 1.35;
+      color: var(--text-dim);
+      opacity: 0.9;
+      text-align: right;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #666;
+    }
+    .status-dot.ok { background: var(--accent); }
+    .status-dot.err { background: var(--danger); }
+    .toggle-inline {
+      display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    }
+    .toggle-inline input { accent-color: var(--accent); }
+
+    .thread {
+      flex: 0 0 auto;
+      padding: 24px 16px 180px;
+      max-width: min(1200px, 100%);
+      width: 100%;
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+    .msg {
+      margin-bottom: 24px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .msg .avatar {
+      width: 28px; height: 28px; border-radius: 4px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .msg.user .avatar { background: #5436da; }
+    .msg.assistant .avatar { background: var(--accent); color: #000; }
+    .msg .body { flex: 1; min-width: 0; }
+    .msg .role { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+    .bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      line-height: 1.6;
+      font-size: 15px;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+    }
+    .bubble p { margin: 0 0 10px; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble ul, .bubble ol { margin: 0 0 10px 20px; padding: 0; }
+    .bubble li { margin: 4px 0; }
+    .bubble h1, .bubble h2, .bubble h3 { margin: 0 0 10px; font-weight: 700; line-height: 1.25; }
+    .bubble a { color: #6ee7b7; }
+    .bubble pre,
+    .bubble code {
+      max-width: 100%;
+      overflow-x: auto;
+      word-break: break-all;
+    }
+    .msg.user .bubble { background: var(--user-bubble); }
+    .msg.assistant .bubble { background: var(--assistant-bubble); border: 1px solid var(--border); }
+    .citations {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    .cite-row { margin-top: 6px; padding: 6px 8px; background: rgba(0,0,0,.2); border-radius: 6px; }
+    .assist-meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .assist-meta .chip {
+      font-size: 11px;
+      line-height: 1;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--text-dim);
+    }
+    .assist-meta .chip.warn { color: #f59e0b; border-color: rgba(245,158,11,.35); }
+    .assist-meta .chip.ok { color: #34d399; border-color: rgba(52,211,153,.35); }
+
+    .composer-wrap {
+      position: fixed;
+      left: 260px; /* 与侧边栏宽度对齐 */
+      right: 0;
+      bottom: 0;
+      z-index: 45;
+      padding: 14px 22px 18px;
+      background:
+        linear-gradient(180deg, rgba(33,33,33,0) 0%, rgba(33,33,33,.85) 26%, rgba(33,33,33,1) 52%);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      overflow-x: hidden;
+    }
+    .composer-shell {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .composer {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      background: #2b2b2b;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 26px;
+      padding: 12px 14px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .composer textarea {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      resize: none;
+      max-height: 220px;
+      min-height: 30px;
+      line-height: 1.6;
+      outline: none;
+      padding: 2px 2px 2px 4px;
+    }
+    .composer textarea::placeholder {
+      color: #9ca3af;
+    }
+    .composer-btns {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 2px;
+    }
+    .btn-send {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-send:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-send:hover:not(:disabled) { background: var(--accent-dim); }
+    .btn-icon {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--text-dim);
+      border-radius: 999px;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-icon:hover { color: var(--text); background: rgba(255,255,255,.08); }
+    .pending-chat-images {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      background: var(--bg-elevated);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .pending-chat-images .pending-label { margin-right: 4px; }
+    .pending-thumb-wrap { position: relative; display: inline-block; }
+    .pending-thumb {
+      width: 44px; height: 44px; object-fit: cover;
+      border-radius: 8px; border: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .pending-remove {
+      position: absolute; top: -6px; right: -6px;
+      width: 20px; height: 20px; border-radius: 50%;
+      border: none; background: var(--danger); color: #fff;
+      font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
+    }
+    .img-note { font-size: 12px; color: var(--text-dim); font-weight: normal; }
+
+    #chat-pending-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(16,163,127,.45);
+      background: rgba(16,163,127,.12);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    #chat-pending-banner.on { display: flex; }
+    #chat-pending-banner .spinner { flex-shrink: 0; }
+
+    /* Modals */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.on { display: flex; }
+    .modal {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 480px;
+      width: 100%;
+      max-height: 85vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-wide { max-width: 560px; }
+    .modal h2 {
+      padding: 16px 20px;
+      font-size: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-body { padding: 16px 20px; overflow-y: auto; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+    .modal-foot {
+      padding: 12px 20px 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      border-top: 1px solid var(--border);
+    }
+    .modal-foot button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .modal-foot button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .settings-grid { display: grid; gap: 12px; }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .settings-row label { color: var(--text); font-size: 13px; }
+    .settings-row input[type="number"], .settings-row select, .settings-row input[type="text"] {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      min-width: 120px;
+    }
+    .hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+    .raw-debug {
+      margin-top: 16px;
+      font-size: 11px;
+    }
+    .raw-debug summary { cursor: pointer; color: var(--text-dim); }
+    .raw-debug pre {
+      margin-top: 8px;
+      padding: 10px;
+      background: #000;
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 200px;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 720px) {
+      .sidebar { display: none; }
+      .thread { max-width: 100%; padding-bottom: 170px; }
+      .composer-wrap {
+        left: 0;
+        right: 0;
+        padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+      }
+      .composer-shell { max-width: 100%; }
+      .composer { border-radius: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <button type="button" class="btn-new" id="btn-new-chat">
+        <span>＋</span> 新对话
+      </button>
+    </div>
+    <div class="session-list" id="session-list"></div>
+    <div class="sidebar-foot">
+      <label>API Base（空=同域）</label>
+      <input type="text" id="api-base" placeholder="http://localhost:9000" />
+      <label style="margin-top:10px">RAG namespace（与上传一致）</label>
+      <input type="text" id="rag-namespace" placeholder="session:..." />
+      <div class="sidebar-actions">
+        <button type="button" class="btn-ghost" id="btn-settings">⚙ 模型与中间件…</button>
+        <button type="button" class="btn-ghost" id="btn-upload">📎 会话知识上传</button>
+        <button type="button" class="btn-ghost" id="btn-pending">✋ 待审批</button>
+        <button type="button" class="btn-ghost" id="btn-clear">🗑 清空当前会话记忆</button>
+        <button type="button" class="btn-ghost" id="btn-health">♥ 检查 API</button>
+      </div>
+      <input type="file" id="file-upload" style="display:none" />
+      <input type="file" id="chat-images-input" accept="image/*" multiple style="display:none" />
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <h1>论文检索助手</h1>
+      <div class="topbar-right">
+        <div id="global-loading" class="global-loading" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="global-loading-text">处理中…</span>
+        </div>
+        <div class="stream-opt-group">
+          <label class="toggle-inline"><input type="checkbox" id="opt-stream" checked /> 流式输出</label>
+          <span class="stream-hint">整段答案在服务端生成完成后按字推送；推理耗时阶段可能暂无输出。</span>
+        </div>
+        <span class="status-dot" id="status-dot" title="连接"></span>
+        <span id="status-text">就绪</span>
+      </div>
+    </header>
+    <div class="thread" id="thread"></div>
+    <div class="composer-wrap">
+      <div class="composer-shell">
+        <div id="chat-pending-banner" class="" role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="chat-pending-banner-text">正在连接服务器并生成回答，请稍候…</span>
+        </div>
+        <div id="pending-chat-images" class="pending-chat-images" aria-live="polite"></div>
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="给 AI 助手发送消息"></textarea>
+          <div class="composer-btns">
+            <button type="button" class="btn-icon" id="btn-chat-image" title="为本轮对话附加图片（多模态）">🖼</button>
+            <button type="button" class="btn-icon" id="btn-attach" title="上传文件到当前 namespace">📎</button>
+            <button type="button" class="btn-send" id="btn-send" aria-label="发送">➤</button>
+          </div>
+        </div>
+        <details class="raw-debug">
+          <summary>Raw JSON（调试）</summary>
+          <pre id="raw-json">{}</pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中间件与危险选项确认 -->
+  <div class="modal-backdrop" id="modal-confirm">
+    <div class="modal">
+      <h2 id="confirm-title">确认</h2>
+      <div class="modal-body" id="confirm-body"></div>
+      <div class="modal-foot">
+        <button type="button" id="confirm-cancel">取消</button>
+        <button type="button" class="primary" id="confirm-ok">确认开启</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal modal-wide">
+      <h2>对话选项</h2>
+      <div class="modal-body">
+        <p style="margin-bottom:14px">与 <code>/chat_answer</code> 请求体对齐。部分选项开启前会弹出确认框。</p>
+        <div class="settings-grid">
+          <div class="settings-row">
+            <label>检索策略 strategy</label>
+            <select id="set-strategy">
+              <option value="hybrid_rerank">hybrid_rerank</option>
+              <option value="default">default</option>
+              <option value="multi_query">multi_query</option>
+              <option value="multi_query_hybrid">multi_query_hybrid</option>
+              <option value="multi_stage_deep">multi_stage_deep</option>
+              <option value="hybrid">hybrid</option>
+              <option value="rerank">rerank</option>
+              <option value="vector_only">vector_only</option>
+              <option value="bm25_only">bm25_only</option>
+              <option value="paper_focused">paper_focused</option>
+              <option value="table_focused">table_focused</option>
+              <option value="figure_focused">figure_focused</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <label>检索条数 k</label>
+            <input type="number" id="set-k" min="1" max="50" value="6" />
+          </div>
+          <div class="settings-row">
+            <label>分数阈值 score_threshold</label>
+            <input type="number" id="set-threshold" min="0" max="1" step="0.05" value="0.35" />
+          </div>
+          <div class="settings-row">
+            <label>Agent 工具调用 use_tools</label>
+            <input type="checkbox" id="set-tools" />
+          </div>
+          <div class="settings-row">
+            <label>业务中间件（校验/限流/统计等）</label>
+            <input type="checkbox" id="set-biz" />
+          </div>
+          <div class="settings-row">
+            <label>Summarization 中间件（需业务中间件）</label>
+            <input type="checkbox" id="set-sum" />
+          </div>
+          <div class="settings-row">
+            <label>多源检索 use_multi_source</label>
+            <input type="checkbox" id="set-multi" />
+          </div>
+          <div class="settings-row">
+            <label>问句含 arXiv ID 时自动论文 QA</label>
+            <input type="checkbox" id="set-auto-arxiv" checked />
+          </div>
+          <div class="settings-row">
+            <label>业务中间件 call_limit</label>
+            <input type="number" id="set-call-limit" min="1" max="200" value="60" />
+          </div>
+        </div>
+        <p class="hint">删除类意图需人工审批；开启工具调用后可能触发审批流。</p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="settings-close">关闭</button>
+        <button type="button" class="primary" id="settings-save">保存到本地</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 审批 -->
+  <div class="modal-backdrop" id="modal-approval">
+    <div class="modal modal-wide">
+      <h2>人工审批</h2>
+      <div class="modal-body">
+        <pre id="approval-args" style="font-size:12px;white-space:pre-wrap;word-break:break-all;"></pre>
+        <label style="display:block;margin-top:12px;color:var(--text)">编辑参数 JSON（decision=edit 时）</label>
+        <textarea id="approval-edit" rows="4" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:monospace;font-size:12px;"></textarea>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="ap-reject">拒绝</button>
+        <button type="button" id="ap-edit">按编辑执行</button>
+        <button type="button" class="primary" id="ap-approve">批准</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const thread = $("thread");
+  const input = $("input");
+  const rawJson = $("raw-json");
+  const statusDot = $("status-dot");
+  const statusText = $("status-text");
+
+  function scrollToBottom() {
+    const y = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight
+    );
+    window.scrollTo(0, y);
+  }
+
+  let currentSessionId = null;
+  let inflight = false;
+  let pendingApproval = null;
+  const MAX_CHAT_IMAGES = 8;
+  let pendingChatFiles = [];
+  let pendingChatUrls = [];
+
+  function revokePendingChatUrls() {
+    pendingChatUrls.forEach((u) => URL.revokeObjectURL(u));
+    pendingChatUrls = [];
+  }
+
+  function renderPendingChatImages() {
+    const el = $("pending-chat-images");
+    revokePendingChatUrls();
+    if (!pendingChatFiles.length) {
+      el.innerHTML = "";
+      el.style.display = "none";
+      return;
+    }
+    el.style.display = "flex";
+    el.innerHTML = "";
+    const lab = document.createElement("span");
+    lab.className = "pending-label";
+    lab.textContent = "本轮附图：";
+    el.appendChild(lab);
+    pendingChatFiles.forEach((file, i) => {
+      const u = URL.createObjectURL(file);
+      pendingChatUrls.push(u);
+      const wrap = document.createElement("span");
+      wrap.className = "pending-thumb-wrap";
+      const img = document.createElement("img");
+      img.className = "pending-thumb";
+      img.src = u;
+      img.alt = "";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pending-remove";
+      btn.setAttribute("aria-label", "移除");
+      btn.textContent = "×";
+      btn.onclick = () => {
+        pendingChatFiles = pendingChatFiles.filter((_, j) => j !== i);
+        renderPendingChatImages();
+      };
+      wrap.appendChild(img);
+      wrap.appendChild(btn);
+      el.appendChild(wrap);
+    });
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(new Error("read failed"));
+      r.readAsDataURL(file);
+    });
+  }
+
+  const LS = {
+    tools: "psa_tools",
+    biz: "psa_biz",
+    sum: "psa_sum",
+    multi: "psa_multi",
+    autoArxiv: "psa_auto_arxiv",
+    stream: "psa_stream",
+    strategy: "psa_strategy",
+    k: "psa_k",
+    thr: "psa_thr",
+    callLimit: "psa_callimit",
+  };
+
+  function apiBase() {
+    return ($("api-base").value || "").trim();
+  }
+
+  function setRaw(obj) {
+    rawJson.textContent = JSON.stringify(obj, null, 2);
+  }
+
+  function setStatus(ok, text) {
+    statusDot.classList.remove("ok", "err");
+    statusDot.classList.add(ok ? "ok" : "err");
+    statusText.textContent = text;
+  }
+
+  function setGlobalLoading(on, label) {
+    const el = $("global-loading");
+    const t = $("global-loading-text");
+    if (el) el.classList.toggle("on", !!on);
+    if (t && label) t.textContent = label;
+    if (t && !on) t.textContent = "处理中…";
+  }
+
+  function setPendingBanner(on, msg) {
+    const b = $("chat-pending-banner");
+    const bt = $("chat-pending-banner-text");
+    if (b) b.classList.toggle("on", !!on);
+    if (bt && msg) bt.textContent = msg;
+  }
+
+  /** 用 DOM 创建助手加载行，避免 innerHTML 在部分环境下不显示 */
+  function appendAssistantLoadingRow() {
+    const wrap = document.createElement("div");
+    wrap.className = "msg assistant";
+    wrap.setAttribute("data-loading-row", "1");
+    const av = document.createElement("div");
+    av.className = "avatar";
+    av.textContent = "AI";
+    const body = document.createElement("div");
+    body.className = "body";
+    const role = document.createElement("div");
+    role.className = "role";
+    role.textContent = "助手";
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    const inner = document.createElement("div");
+    inner.className = "bubble-loading";
+    inner.setAttribute("role", "status");
+    const spin = document.createElement("span");
+    spin.className = "spinner";
+    spin.setAttribute("aria-hidden", "true");
+    const txtWrap = document.createElement("span");
+    const strong = document.createElement("strong");
+    strong.textContent = "正在生成回答";
+    txtWrap.appendChild(strong);
+    txtWrap.appendChild(document.createTextNode("，请稍候…"));
+    const hint = document.createElement("span");
+    hint.className = "bubble-loading-hint";
+    hint.textContent = "检索与推理可能需要数十秒，界面未卡死。";
+    txtWrap.appendChild(hint);
+    inner.appendChild(spin);
+    inner.appendChild(txtWrap);
+    bubble.appendChild(inner);
+    body.appendChild(role);
+    body.appendChild(bubble);
+    wrap.appendChild(av);
+    wrap.appendChild(body);
+    thread.appendChild(wrap);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function waitPaint() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+  }
+
+  async function fetchJson(path, opts) {
+    const base = apiBase();
+    const res = await fetch(base + path, opts);
+    const text = await res.text();
+    if (!res.ok) throw new Error("HTTP " + res.status + ": " + text);
+    if (!text) return {};
+    return JSON.parse(text);
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderMarkdown(text) {
+    const src = String(text ?? "");
+    // 先转义，阻止模型内容里的原始 HTML 注入；再让 marked 解析 Markdown 语法。
+    const safe = escapeHtml(src);
+    if (typeof window.marked === "undefined" || !window.marked.parse) return safe;
+    if (!window.marked.__psa_configured) {
+      const mdRenderer = new window.marked.Renderer();
+      // 兜底：即使模型里包含 HTML，也会因为我们在渲染前先 escape 而变成普通文本。
+      mdRenderer.html = () => "";
+      window.marked.setOptions({
+        gfm: true,
+        breaks: true,
+        renderer: mdRenderer,
+      });
+      window.marked.__psa_configured = true;
+    }
+    return window.marked.parse(safe);
+  }
+
+  function renderMathInEl(rootEl) {
+    try {
+      if (typeof window.renderMathInElement !== "function") return;
+      window.renderMathInElement(rootEl, {
+        delimiters: [
+          { left: "$$", right: "$$" },
+          { left: "$", right: "$" },
+          { left: "\\(", right: "\\)" },
+          { left: "\\[", right: "\\]" },
+        ],
+        throwOnError: false,
+        strict: false,
+      });
+    } catch (_) {}
+  }
+
+  function linkify(text) {
+    let s = escapeHtml(text || "");
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, a, u) =>
+      `<a href="${u}" target="_blank" rel="noreferrer" style="color:#6ee7b7">${a}</a>`);
+    s = s.replace(/(https?:\/\/[^\s<]+)/g, (u) =>
+      `<a href="${u}" target="_blank" rel="noreferrer" style="color:#6ee7b7">${u}</a>`);
+    return s;
+  }
+
+  function currentRagNs() {
+    const v = ($("rag-namespace").value || "").trim();
+    return v || "default";
+  }
+
+  function newSession() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    const id = `chat-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    currentSessionId = id;
+    $("rag-namespace").value = "session:" + id;
+    thread.innerHTML = "";
+    setRaw({});
+    refreshSessions();
+  }
+
+  function appendMessage(role, htmlContent, citations) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role;
+    const av = role === "user" ? "我" : "AI";
+    let cites = "";
+    if (Array.isArray(citations) && citations.length) {
+      cites = '<div class="citations">' + citations.slice(0, 15).map((c) => {
+        const src = linkify(String(c.source ?? "未知"));
+        const sc = typeof c.score === "number" ? c.score.toFixed(3) : "";
+        return `<div class="cite-row">来源：${src}${sc ? " · " + sc : ""}</div>`;
+      }).join("") + "</div>";
+    }
+    wrap.innerHTML = `
+      <div class="avatar">${av}</div>
+      <div class="body">
+        <div class="role">${role === "user" ? "你" : "助手"}</div>
+        <div class="bubble">${htmlContent}</div>${cites}
+      </div>`;
+    thread.appendChild(wrap);
+    renderMathInEl(wrap);
+    scrollToBottom();
+    return wrap.querySelector(".bubble");
+  }
+
+  function renderAssistantMeta(parentEl, payload) {
+    if (!parentEl || !payload || typeof payload !== "object") return;
+    const chips = [];
+    if (payload.web_fallback) chips.push({ t: "联网兜底", c: "warn" });
+    if (payload.web_supplement) chips.push({ t: "联网补充", c: "warn" });
+    if (payload.retrieval_context_score !== undefined && payload.retrieval_context_score !== null) {
+      const s = Number(payload.retrieval_context_score);
+      if (!Number.isNaN(s)) {
+        chips.push({ t: `上下文评分 ${s.toFixed(1)}/10`, c: s >= 6 ? "ok" : "warn" });
+      }
+    }
+    if (payload.retrieval_judge_reason) {
+      chips.push({ t: `判定: ${String(payload.retrieval_judge_reason).slice(0, 48)}`, c: "" });
+    }
+    if (!chips.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "assist-meta";
+    chips.forEach((x) => {
+      const sp = document.createElement("span");
+      sp.className = "chip" + (x.c ? " " + x.c : "");
+      sp.textContent = x.t;
+      wrap.appendChild(sp);
+    });
+    parentEl.appendChild(wrap);
+  }
+
+  function loadSettingsFromStorage() {
+    // 默认开启：仅当用户显式保存为 "0" 时才关闭
+    $("set-tools").checked = localStorage.getItem(LS.tools) !== "0";
+    $("set-biz").checked = localStorage.getItem(LS.biz) !== "0";
+    $("set-sum").checked = localStorage.getItem(LS.sum) !== "0";
+    $("set-multi").checked = localStorage.getItem(LS.multi) !== "0";
+    $("set-auto-arxiv").checked = localStorage.getItem(LS.autoArxiv) !== "0";
+    $("opt-stream").checked = localStorage.getItem(LS.stream) !== "0";
+    $("set-strategy").value = localStorage.getItem(LS.strategy) || "hybrid_rerank";
+    $("set-k").value = localStorage.getItem(LS.k) || "6";
+    $("set-threshold").value = localStorage.getItem(LS.thr) || "0.35";
+    $("set-call-limit").value = localStorage.getItem(LS.callLimit) || "60";
+  }
+
+  function saveSettingsToStorage() {
+    localStorage.setItem(LS.tools, $("set-tools").checked ? "1" : "0");
+    localStorage.setItem(LS.biz, $("set-biz").checked ? "1" : "0");
+    localStorage.setItem(LS.sum, $("set-sum").checked ? "1" : "0");
+    localStorage.setItem(LS.multi, $("set-multi").checked ? "1" : "0");
+    localStorage.setItem(LS.autoArxiv, $("set-auto-arxiv").checked ? "1" : "0");
+    localStorage.setItem(LS.stream, $("opt-stream").checked ? "1" : "0");
+    localStorage.setItem(LS.strategy, $("set-strategy").value);
+    localStorage.setItem(LS.k, $("set-k").value);
+    localStorage.setItem(LS.thr, $("set-threshold").value);
+    localStorage.setItem(LS.callLimit, $("set-call-limit").value);
+  }
+
+  function buildChatBody(question) {
+    return {
+      question,
+      namespace: currentRagNs(),
+      strategy: $("set-strategy").value,
+      k: parseInt($("set-k").value, 10) || 6,
+      score_threshold: parseFloat($("set-threshold").value) || 0.35,
+      use_multi_source: $("set-multi").checked,
+      session_id: currentSessionId,
+      use_tools: $("set-tools").checked,
+      use_business_middleware: $("set-biz").checked,
+      call_limit: parseInt($("set-call-limit").value, 10) || 60,
+      stats_file: "data/logs/agent_stats.txt",
+      summarization: $("set-sum").checked,
+      summarization_kwargs: null,
+      auto_paper_qa_on_arxiv_id: $("set-auto-arxiv").checked,
+    };
+  }
+
+  let confirmCallback = null;
+  function openConfirm(title, body, onOk) {
+    $("confirm-title").textContent = title;
+    $("confirm-body").textContent = body;
+    confirmCallback = onOk;
+    $("modal-confirm").classList.add("on");
+  }
+  function closeConfirm() {
+    $("modal-confirm").classList.remove("on");
+    confirmCallback = null;
+  }
+  $("confirm-cancel").onclick = closeConfirm;
+  $("confirm-ok").onclick = () => {
+    if (confirmCallback) confirmCallback();
+    closeConfirm();
+  };
+
+  function wireToggleConfirm(checkboxId, title, body) {
+    const el = $(checkboxId);
+    el.addEventListener("change", () => {
+      if (!el.checked) return;
+      el.checked = false;
+      openConfirm(title, body, () => { el.checked = true; saveSettingsToStorage(); });
+    });
+  }
+
+  $("btn-settings").onclick = () => { loadSettingsFromStorage(); $("modal-settings").classList.add("on"); };
+  $("settings-close").onclick = () => $("modal-settings").classList.remove("on");
+  $("settings-save").onclick = () => { saveSettingsToStorage(); $("modal-settings").classList.remove("on"); };
+
+  wireToggleConfirm("set-tools", "启用 Agent 工具调用",
+    "模型将可主动调用天气、arXiv 检索、本地知识库等工具；可能产生额外 API 调用，且删除类操作会进入人工审批。");
+  wireToggleConfirm("set-biz", "启用业务中间件",
+    "将开启校验、限流、PII 脱敏、统计等钩子；适合生产向场景。");
+  wireToggleConfirm("set-sum", "启用 Summarization 中间件",
+    "依赖业务中间件；会在链路上做对话摘要类处理（需环境支持 LangChain summarization）。");
+
+  async function parseSSEStream(response, onMeta, onDelta, onDone) {
+    const reader = response.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const line = block.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        const json = line.slice(6);
+        try {
+          const ev = JSON.parse(json);
+          if (ev.type === "meta") onMeta(ev.payload);
+          else if (ev.type === "delta") onDelta(ev.text || "");
+          else if (ev.type === "done") onDone();
+        } catch (_) {}
+      }
+    }
+  }
+
+  async function send() {
+    const text = (input.value || "").trim();
+    if (!text || inflight) return;
+    if (!currentSessionId) newSession();
+    input.value = "";
+    autoGrow(input);
+
+    let userHtml = renderMarkdown(text);
+    if (pendingChatFiles.length) {
+      userHtml +=
+        ' <span class="img-note">（' + pendingChatFiles.length + " 张附图处理中…）</span>";
+    }
+    appendMessage("user", userHtml, null);
+    const userBubbleEl = thread.lastElementChild
+      ? thread.lastElementChild.querySelector(".bubble")
+      : null;
+    inflight = true;
+    $("btn-send").disabled = true;
+    setStatus(true, "生成中…");
+    setPendingBanner(true, "正在准备请求…（读取附图或连接服务器）");
+    const bubbleElLoading = appendAssistantLoadingRow();
+    setGlobalLoading(true, "生成回答中…");
+    await waitPaint();
+
+    let imageBase64List = [];
+    try {
+      imageBase64List =
+        pendingChatFiles.length > 0
+          ? await Promise.all(pendingChatFiles.map(fileToDataUrl))
+          : [];
+    } catch (readErr) {
+      setGlobalLoading(false);
+      setPendingBanner(false);
+      inflight = false;
+      $("btn-send").disabled = false;
+      setStatus(false, "错误");
+      if (bubbleElLoading) {
+        bubbleElLoading.innerHTML = "";
+        bubbleElLoading.textContent = "附图读取失败：" + String(readErr);
+      }
+      return;
+    }
+
+    if (userBubbleEl) {
+      let uh = renderMarkdown(text);
+      if (imageBase64List.length) {
+        uh +=
+          ' <span class="img-note">（附图 ' + imageBase64List.length + "）</span>";
+      }
+      userBubbleEl.innerHTML = uh;
+    }
+
+    setPendingBanner(true, "正在连接服务器并生成回答…（RAG 可能需数十秒）");
+
+    const body = buildChatBody(text);
+    if (imageBase64List.length) body.images_base64 = imageBase64List;
+    const useStream = $("opt-stream").checked;
+    let metaPayload = null;
+    let bubbleEl = bubbleElLoading;
+    let chatOk = false;
+
+    try {
+      if (useStream) {
+        const base = apiBase();
+        const res = await fetch(base + "/chat_answer/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          if (bubbleEl) {
+            bubbleEl.innerHTML = "";
+            bubbleEl.textContent = "请求失败：HTTP " + res.status + ": " + t;
+          }
+          throw new Error("HTTP " + res.status + ": " + t);
+        }
+        let streamStarted = false;
+        await parseSSEStream(
+          res,
+          (payload) => { metaPayload = payload; },
+          (ch) => {
+            if (!streamStarted && ch) {
+              streamStarted = true;
+              bubbleEl.textContent = "";
+            }
+            if (streamStarted) {
+              bubbleEl.textContent += ch;
+              scrollToBottom();
+            }
+          },
+          () => {}
+        );
+        let answerPlain = "";
+        if (!streamStarted) {
+          bubbleEl.innerHTML = "";
+          bubbleEl.textContent = "（无正文返回）";
+          answerPlain = bubbleEl.textContent;
+        } else {
+          answerPlain = bubbleEl.textContent;
+            bubbleEl.innerHTML = renderMarkdown(answerPlain);
+            renderMathInEl(bubbleEl);
+        }
+        if (metaPayload && metaPayload.citations && metaPayload.citations.length) {
+          const cites = document.createElement("div");
+          cites.className = "citations";
+          cites.innerHTML = metaPayload.citations.slice(0, 15).map((c) => {
+            const src = linkify(String(c.source ?? "未知"));
+            const sc = typeof c.score === "number" ? c.score.toFixed(3) : "";
+            return `<div class="cite-row">来源：${src}${sc ? " · " + sc : ""}</div>`;
+          }).join("");
+          bubbleEl.parentElement.appendChild(cites);
+        }
+        renderAssistantMeta(bubbleEl.parentElement, metaPayload || {});
+        const full = {
+          answer: answerPlain,
+          citations: metaPayload?.citations || [],
+          approval_required: metaPayload?.approval_required,
+          stats: metaPayload?.stats,
+          web_fallback: metaPayload?.web_fallback,
+        };
+        setRaw(full);
+        if (metaPayload?.approval_required) showApproval(metaPayload.approval_required);
+      } else {
+        const data = await fetchJson("/chat_answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        setRaw(data);
+        bubbleEl.innerHTML = renderMarkdown(data.answer || "");
+        renderMathInEl(bubbleEl);
+        if (data.citations && data.citations.length) {
+          const cites = document.createElement("div");
+          cites.className = "citations";
+          cites.innerHTML = data.citations.slice(0, 15).map((c) => {
+            const src = linkify(String(c.source ?? "未知"));
+            const sc = typeof c.score === "number" ? c.score.toFixed(3) : "";
+            return `<div class="cite-row">来源：${src}${sc ? " · " + sc : ""}</div>`;
+          }).join("");
+          bubbleEl.parentElement.appendChild(cites);
+        }
+        renderAssistantMeta(bubbleEl.parentElement, data || {});
+        scrollToBottom();
+        if (data.approval_required) showApproval(data.approval_required);
+      }
+      setStatus(true, "就绪");
+      await refreshSessions();
+      chatOk = true;
+    } catch (e) {
+      setStatus(false, "错误");
+      if (bubbleEl) {
+        bubbleEl.innerHTML = "";
+        bubbleEl.textContent = "请求失败：" + String(e);
+      } else {
+        appendMessage("assistant", escapeHtml("请求失败：" + String(e)), null);
+      }
+      setRaw({ error: String(e) });
+    } finally {
+      setGlobalLoading(false);
+      setPendingBanner(false);
+      if (chatOk) {
+        pendingChatFiles = [];
+        renderPendingChatImages();
+      }
+      inflight = false;
+      $("btn-send").disabled = false;
+    }
+  }
+
+  function showApproval(ap) {
+    pendingApproval = {
+      approval_id: ap.approval_id,
+      tool: ap.tool || ap.tool_name || "",
+      args: ap.args || ap.tool_args || {},
+      allowed_decisions: ap.allowed_decisions || ["approve", "edit", "reject"],
+    };
+    $("approval-args").textContent = JSON.stringify(pendingApproval, null, 2);
+    $("approval-edit").value = JSON.stringify(pendingApproval.args, null, 2);
+    $("modal-approval").classList.add("on");
+  }
+
+  async function decideApproval(decision) {
+    if (!pendingApproval) return;
+    const id = pendingApproval.approval_id;
+    let edited = null;
+    if (decision === "edit") {
+      try { edited = JSON.parse($("approval-edit").value || "{}"); }
+      catch (e) { alert("JSON 无效"); return; }
+    }
+    try {
+      const r = await fetchJson("/approvals/decide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approval_id: id,
+          decision: decision,
+          edited_args: edited,
+          note: null,
+        }),
+      });
+      $("modal-approval").classList.remove("on");
+      pendingApproval = null;
+      appendMessage("assistant", escapeHtml("审批结果：\n" + JSON.stringify(r, null, 2)), null);
+      setRaw(r);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
+  $("ap-approve").onclick = () => decideApproval("approve");
+  $("ap-reject").onclick = () => decideApproval("reject");
+  $("ap-edit").onclick = () => decideApproval("edit");
+
+  async function refreshSessions() {
+    try {
+      const data = await fetchJson("/sessions", { method: "GET" });
+      const list = data.sessions || [];
+      const el = $("session-list");
+      el.innerHTML = "";
+      list.forEach((sid) => {
+        const div = document.createElement("div");
+        div.className = "session-item" + (sid === currentSessionId ? " active" : "");
+        div.textContent = sid;
+        div.onclick = async () => {
+          currentSessionId = sid;
+          $("rag-namespace").value = "session:" + sid;
+          thread.innerHTML = "";
+          try {
+            const s = await fetchJson("/sessions/" + encodeURIComponent(sid) + "/messages", { method: "GET" });
+            (s.messages || []).forEach((m) => {
+              const role = m.role === "user" ? "user" : "assistant";
+              const content = m.content || "";
+              appendMessage(role, renderMarkdown(content), null);
+            });
+          } catch (e) {
+            appendMessage("assistant", escapeHtml("加载失败：" + e), null);
+          }
+          refreshSessions();
+        };
+        el.appendChild(div);
+      });
+    } catch (_) {}
+  }
+
+  $("btn-new-chat").onclick = newSession;
+
+  $("btn-upload").onclick = () => $("file-upload").click();
+  $("btn-chat-image").onclick = () => $("chat-images-input").click();
+  $("chat-images-input").onchange = () => {
+    const inp = $("chat-images-input");
+    const picked = Array.from(inp.files || []);
+    inp.value = "";
+    if (!picked.length) return;
+    const room = MAX_CHAT_IMAGES - pendingChatFiles.length;
+    if (room <= 0) return;
+    pendingChatFiles = pendingChatFiles.concat(picked.slice(0, room));
+    renderPendingChatImages();
+  };
+  $("btn-attach").onclick = () => $("file-upload").click();
+  $("file-upload").onchange = async () => {
+    const f = $("file-upload").files[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append("file", f, f.name);
+    fd.append("namespace", currentRagNs());
+    if (currentSessionId) fd.append("session_id", currentSessionId);
+    setUploadBusy(true);
+    try {
+      setStatus(true, "上传中…");
+      const data = await fetchJson("/session/embed_file", { method: "POST", body: fd });
+      let extra = "";
+      if (data.ingest_id) {
+        extra += "\n会话索引 id: " + data.ingest_id;
+      }
+      if (data.arxiv_id) {
+        extra = "\n论文库：arXiv " + data.arxiv_id + "，入库：" + (data.paper_library_ingested ? "是" : "否");
+        if (data.paper_ingest_note && data.paper_ingest_note.length < 500)
+          extra += "\n" + data.paper_ingest_note;
+      }
+      appendMessage("assistant", escapeHtml(
+        "已上传：「" + data.filename + "」→ " + data.chunks_added + " 块，namespace=" + data.namespace + extra
+      ), null);
+      setRaw(data);
+      setStatus(true, "就绪");
+    } catch (e) {
+      appendMessage("assistant", escapeHtml("上传失败：" + e), null);
+      setStatus(false, "错误");
+    } finally {
+      setUploadBusy(false);
+      $("file-upload").value = "";
+    }
+  };
+
+  $("btn-pending").onclick = async () => {
+    try {
+      const q = currentSessionId ? ("?session_id=" + encodeURIComponent(currentSessionId)) : "";
+      const data = await fetchJson("/approvals/pending" + q, { method: "GET" });
+      const items = data.items || [];
+      if (!items.length) {
+        alert("当前没有待审批项。");
+        return;
+      }
+      const it = items[0];
+      showApproval({
+        approval_id: it.approval_id,
+        tool: it.tool_name,
+        args: it.tool_args,
+        allowed_decisions: it.allowed_decisions,
+      });
+    } catch (e) {
+      alert(String(e));
+    }
+  };
+
+  $("btn-clear").onclick = async () => {
+    if (!currentSessionId) return;
+    if (!confirm("清空当前会话在服务端内存中的消息？")) return;
+    try {
+      await fetchJson("/sessions/" + encodeURIComponent(currentSessionId) + "/clear", { method: "POST" });
+      thread.innerHTML = "";
+      setRaw({});
+    } catch (e) { alert(String(e)); }
+  };
+
+  $("btn-health").onclick = async () => {
+    try {
+      await fetchJson("/health", { method: "GET" });
+      setStatus(true, "API 正常");
+    } catch (e) { setStatus(false, "不可用"); alert(String(e)); }
+  };
+
+  function autoGrow(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }
+  input.addEventListener("input", () => autoGrow(input));
+  $("btn-send").onclick = send;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  $("opt-stream").addEventListener("change", () => {
+    localStorage.setItem(LS.stream, $("opt-stream").checked ? "1" : "0");
+  });
+
+  loadSettingsFromStorage();
+  (async () => {
+    try { await fetchJson("/health", { method: "GET" }); setStatus(true, "就绪"); }
+    catch (_) { setStatus(false, "离线"); }
+    await refreshSessions();
+    if (!currentSessionId) newSession();
+    else $("rag-namespace").value = "session:" + currentSessionId;
+  })();
+})();
+  </script>
+</body>
+</html>

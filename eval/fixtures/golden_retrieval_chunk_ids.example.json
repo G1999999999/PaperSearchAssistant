@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "description": "示例：复制到 golden_retrieval_chunk_ids.json 或单独 --fixture 引用；请按你机器上的 namespace/正文片段改写。enabled=false 时 run_cli 会跳过（pytest 仍会读取同文件时需删除 skip 用例或改用主 golden）。",
+  "chroma_persist_dir": null,
+  "cases": [
+    {
+      "id": "example_attention_in_default_ns",
+      "enabled": false,
+      "namespace": "default",
+      "queries": ["What is multi-head attention in transformers?"],
+      "k": 12,
+      "strategy": "vector",
+      "score_threshold": 10.0,
+      "chroma_filter": null,
+      "hits": [
+        {
+          "note": "Top-K 中至少有一条同时满足：正文含任一同义短语 + 可选元数据",
+          "match_any_text": [
+            "Multi-Head Attention",
+            "scaled dot-product attention"
+          ],
+          "metadata_contains": {
+            "arxiv_id": "1706.03762"
+          }
+        }
+      ],
+      "min_hit_ratio": 1.0
+    }
+  ]
+}

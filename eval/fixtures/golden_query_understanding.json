@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "method_intent",
+      "question": "这篇论文提出的模型架构是什么？",
+      "expect": {
+        "intent": "paper_method",
+        "wants_table": false,
+        "wants_figure": false
+      }
+    },
+    {
+      "id": "table_lookup",
+      "question": "Table 2 里的 ablation 结果说明了什么？",
+      "expect": {
+        "intent": "table_lookup",
+        "wants_table": true
+      }
+    },
+    {
+      "id": "figure_lookup",
+      "question": "Figure 3 架构图里 encoder 有几层？",
+      "expect": {
+        "intent": "figure_lookup",
+        "wants_figure": true
+      }
+    },
+    {
+      "id": "comparison",
+      "question": "Transformer 和 RNN 的区别在哪里？",
+      "expect": {
+        "intent": "paper_comparison"
+      }
+    },
+    {
+      "id": "subquestions_split",
+      "question": "方法怎么做的？实验结果如何？",
+      "expect_subquestions_min": 2
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+# 本地 PostgreSQL（论文结构化存储 / chat_* / FTS）
+# 启动：docker compose -f docker-compose.postgres.yml up -d
+# 建表：DATABASE_URL=... python scripts/init_pg_schema.py
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: psa2-papersearch
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: papersearch
+      POSTGRES_PASSWORD: papersearch_dev
+      POSTGRES_DB: papersearch
+    ports:
+      - "15432:5432"
+    volumes:
+      - psa2_pg_data:/var/lib/postgresql/data
+
+volumes:
+  psa2_pg_data:

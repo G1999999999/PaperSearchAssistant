@@ -1,0 +1,47 @@
+# ===== Secrets & local runtime config =====
+.env
+.env.local
+.env.runtime
+.env.*.local
+*.pem
+*.key
+credentials.json
+secrets/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ===== Runtime data (local DBs, conversations, PDFs, vectors) =====
+data/
+logs/
+*.sqlite3
+*.db
+
+# ===== IDE / OS =====
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Junk / accidental files =====
+=0.*
+*.log

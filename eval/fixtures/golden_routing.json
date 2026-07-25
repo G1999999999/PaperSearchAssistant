@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "description": "路由与 LangGraph selected_path 黄金集；仅依赖规则路由，不调用 LLM。扩写时请先本地跑: python -m eval",
+  "cases": [
+    {
+      "id": "weather_zh",
+      "question": "北京今天天气怎么样？",
+      "use_tools": false,
+      "expect_route": {
+        "intent": "tool_task",
+        "sub_intent": "weather",
+        "route": "weather"
+      },
+      "expect_selected_path": "weather"
+    },
+    {
+      "id": "local_library_list",
+      "question": "列出本地库里的论文",
+      "use_tools": true,
+      "expect_route": {
+        "intent": "local_paper_search",
+        "route": "rag"
+      },
+      "expect_selected_path": "local_library_list"
+    },
+    {
+      "id": "paper_qa_with_arxiv_id",
+      "question": "1706.03762 这篇论文的模型结构是什么？",
+      "use_tools": false,
+      "expect_route": {
+        "intent": "paper_qa",
+        "route": "rag"
+      },
+      "expect_selected_path": "rag"
+    },
+    {
+      "id": "paper_search_use_tools_still_rag",
+      "question": "帮我搜索 arxiv 上关于 diffusion 的最新论文",
+      "use_tools": true,
+      "expect_route": {
+        "intent": "paper_search",
+        "route": "arxiv"
+      },
+      "expect_selected_path": "rag"
+    },
+    {
+      "id": "chitchat_nonpaper",
+      "question": "你好，介绍一下你自己",
+      "use_tools": false,
+      "expect_route": {
+        "intent": "local_rag",
+        "route": "rag"
+      },
+      "expect_selected_path": "nonpaper"
+    },
+    {
+      "id": "generic_rag_tools_path",
+      "question": "查一下现在美元汇率",
+      "use_tools": true,
+      "expect_route": {
+        "intent": "local_rag",
+        "route": "rag"
+      },
+      "expect_selected_path": "tools"
+    }
+  ]
+}

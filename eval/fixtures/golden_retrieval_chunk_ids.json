@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "description": "Chroma 检索 recall 黄金集：在 cases 中追加用例。cases 为空时集成测试自动 skip。可选 chroma_persist_dir 覆盖持久化目录（默认用项目 CHROMA_PERSIST_DIR 或环境变量 CHROMA_EVAL_PERSIST_DIR）。",
+  "chroma_persist_dir": null,
+  "cases": []
+}
